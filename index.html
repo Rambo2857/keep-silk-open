@@ -3,50 +3,105 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-html,body{
-  margin:0;
-  width:100%;
-  height:100%;
-  overflow:hidden;
-  background:#111111;
-  font-family:Arial,sans-serif;
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #111111;
+  font-family: Arial, sans-serif;
 }
-body{
-  display:flex;
-  align-items:center;
-  justify-content:center;
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-button{
-  border:0;
-  border-radius:22px;
-  padding:12px 22px;
-  background:#16a52f;
-  color:white;
-  font-size:18px;
-  font-weight:bold;
-  white-space:nowrap;
+
+button {
+  border: 0;
+  border-radius: 22px;
+  padding: 12px 22px;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.off {
+  background: #c62828;
+}
+
+.on {
+  background: #16a52f;
 }
 </style>
 </head>
+
 <body>
-<button id="keep">📌 Seite bleibt offen</button>
+
+<button id="keep" class="off">
+  🔴 Antippen – Seite offen halten
+</button>
 
 <script>
+let wakeLock = null;
 const button = document.getElementById("keep");
 
-button.addEventListener("click", async () => {
+function showOff() {
+  button.className = "off";
+  button.textContent = "🔴 Antippen – Seite offen halten";
+}
+
+function showOn() {
+  button.className = "on";
+  button.textContent = "🟢 Seite bleibt offen";
+}
+
+async function activateWakeLock() {
   try {
-    if ("wakeLock" in navigator) {
-      await navigator.wakeLock.request("screen");
-      button.textContent = "📌 Seite bleibt offen";
-      button.style.background = "#16a52f";
+    if (!("wakeLock" in navigator)) {
+      button.textContent = "Wake Lock nicht unterstützt";
+      return;
     }
-  } catch (e) {
-    button.textContent = "Antippen zum Aktivieren";
-    button.style.background = "#d85c5c";
+
+    wakeLock = await navigator.wakeLock.request("screen");
+    showOn();
+
+    wakeLock.addEventListener("release", () => {
+      wakeLock = null;
+      showOff();
+    });
+
+  } catch (err) {
+    wakeLock = null;
+    showOff();
+  }
+}
+
+button.addEventListener("click", async () => {
+  if (wakeLock === null) {
+    await activateWakeLock();
+  } else {
+    await wakeLock.release();
+    wakeLock = null;
+    showOff();
   }
 });
+
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState === "visible" &&
+      wakeLock === null &&
+      button.classList.contains("on")) {
+    await activateWakeLock();
+  }
+});
+
+showOff();
 </script>
+
 </body>
 </html>
